@@ -1,0 +1,373 @@
+<!DOCTYPE html><html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#10111f">
+    <meta name="description" content="StudyAI - Your personal AI study assistant for notes, documents, and video lectures.">
+    <title>StudyAI — Your AI Study Partner</title>
+    <link rel="stylesheet" href="style.css">
+</head><body>
+    <div class="app">    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-icon">✦</div>
+            <div>
+                <h2>StudyAI</h2>
+                <span>Your AI study partner</span>
+            </div>
+            <button class="close-sidebar" id="closeSidebar" aria-label="Close menu">×</button>
+        </div>
+
+        <button class="new-chat" id="newChat">
+            <span>＋</span> New conversation
+        </button>
+
+        <p class="nav-heading">WORKSPACE</p>
+
+        <nav class="navigation">
+            <button class="nav-item active" data-page="chat">
+                <span>◈</span> AI Chat
+            </button>
+            <button class="nav-item" data-page="files">
+                <span>▤</span> My Documents
+            </button>
+            <button class="nav-item" data-page="notes">
+                <span>✎</span> Study Notes
+            </button>
+            <button class="nav-item" data-page="youtube">
+                <span>▷</span> YouTube Extractor
+            </button>
+            <button class="nav-item" data-page="quiz">
+                <span>✧</span> Quiz & Flashcards
+            </button>
+            <button class="nav-item" data-page="library">
+                <span>▣</span> My Library
+            </button>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <div class="upgrade-card">
+                <div class="upgrade-icon">✦</div>
+                <h3>Study smarter.</h3>
+                <p>Your personal learning space, all in one place.</p>
+            </div>
+
+            <div class="profile">
+                <div class="avatar">S</div>
+                <div class="profile-info">
+                    <strong>Student</strong>
+                    <span>Free workspace</span>
+                </div>
+                <span class="profile-menu">•••</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+
+        <header class="topbar">
+            <button class="menu-button" id="menuButton" aria-label="Open menu">☰</button>
+
+            <div class="breadcrumb">
+                <span>Workspace</span>
+                <span class="breadcrumb-separator">/</span>
+                <strong id="currentSection">AI Chat</strong>
+            </div>
+
+            <div class="topbar-right">
+                <span class="status-dot"></span>
+                <span class="status-text">Study mode</span>
+            </div>
+        </header>
+
+        <!-- CHAT PAGE -->
+        <section class="page chat-page active" id="chatPage">
+
+            <div class="welcome">
+                <div class="welcome-badge">
+                    <span>✦</span> YOUR PERSONAL AI STUDY SPACE
+                </div>
+
+                <h1>Learn anything.<br>
+                    <span>Understand everything.</span>
+                </h1>
+
+                <p class="welcome-description">
+                    Upload your notes, explore difficult concepts, and turn
+                    lectures into knowledge.
+                </p>
+            </div>
+
+            <div class="quick-actions">
+                <button class="quick-card" data-prompt="Explain a difficult concept in simple English with real-life examples.">
+                    <div class="quick-icon purple">✧</div>
+                    <strong>Explain a topic</strong>
+                    <span>Understand difficult concepts</span>
+                    <span class="card-arrow">↗</span>
+                </button>
+
+                <button class="quick-card" data-prompt="Help me generate detailed, exam-ready study notes.">
+                    <div class="quick-icon blue">▤</div>
+                    <strong>Create study notes</strong>
+                    <span>Prepare for your exams</span>
+                    <span class="card-arrow">↗</span>
+                </button>
+
+                <button class="quick-card" data-prompt="Generate practice questions and MCQs to test my knowledge.">
+                    <div class="quick-icon orange">✎</div>
+                    <strong>Practice questions</strong>
+                    <span>Test your understanding</span>
+                    <span class="card-arrow">↗</span>
+                </button>
+
+                <button class="quick-card" data-prompt="Help me prepare a seminar with an introduction, detailed content, and conclusion.">
+                    <div class="quick-icon green">▷</div>
+                    <strong>Prepare a seminar</strong>
+                    <span>Organize your presentation</span>
+                    <span class="card-arrow">↗</span>
+                </button>
+            </div>
+
+            <div class="chat-area">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="assistant-message">
+                        <div class="message-avatar">✦</div>
+                        <div class="message-content">
+                            <strong>StudyAI</strong>
+                            <p>Hey there! 👋 I'm your study assistant.</p>
+                            <p>Ask me a question, choose a study tool, or upload a document to get started.</p>
+                            <span class="demo-label">Preview mode · AI connection coming next</span>
+                        </div>
+                    </div>
+                </div>
+
+                <form class="chat-composer" id="chatForm">
+                    <textarea
+                        id="chatInput"
+                        rows="1"
+                        maxlength="4000"
+                        placeholder="Ask anything about your studies..."
+                        aria-label="Your message"
+                    ></textarea>
+
+                    <div class="composer-bottom">
+                        <div class="composer-tools">
+                            <button type="button" class="tool-button" id="attachButton">
+                                ＋ <span>Attach file</span>
+                            </button>
+
+                            <button type="button" class="tool-button" id="notesShortcut">
+                                ✎ <span>Study notes</span>
+                            </button>
+                        </div>
+
+                        <button type="submit" class="send-button" id="sendButton" aria-label="Send message">
+                            ↑
+                        </button>
+                    </div>
+                </form>
+
+                <p class="privacy-note">StudyAI preview · Connect an AI provider to enable real AI responses.</p>
+            </div>
+        </section>
+
+        <!-- DOCUMENTS PAGE -->
+        <section class="page content-page" id="filesPage">
+            <div class="page-heading">
+                <span class="eyebrow">YOUR MATERIALS</span>
+                <h1>My Documents <span>📚</span></h1>
+                <p>Upload your study materials and prepare them for AI-powered learning.</p>
+            </div>
+
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-symbol">⇧</div>
+                <h2>Drop your study materials here</h2>
+                <p>Or choose files from your phone.</p>
+                <button class="primary-button" id="chooseFiles">Choose files</button>
+                <span class="file-types">PDF, TXT, DOCX, PPTX · Maximum 10 MB per file</span>
+            </div>
+
+            <input
+                type="file"
+                id="fileInput"
+                accept=".pdf,.txt,.docx,.pptx"
+                multiple
+                hidden
+            >
+
+            <div class="section-title">
+                <h2>Uploaded files</h2>
+                <span id="fileCount">0 files</span>
+            </div>
+
+            <div class="file-list" id="fileList">
+                <div class="empty-state">
+                    <span>▤</span>
+                    <p>Your uploaded files will appear here.</p>
+                </div>
+            </div>
+
+            <p class="notice">
+                File selection is enabled in this preview. Reading document contents and asking questions about them will be added in the next stage.
+            </p>
+        </section>
+
+        <!-- NOTES PAGE -->
+        <section class="page content-page" id="notesPage">
+            <div class="page-heading">
+                <span class="eyebrow">SMART LEARNING</span>
+                <h1>Study Notes <span>✎</span></h1>
+                <p>Choose a format to plan the notes you want to generate.</p>
+            </div>
+
+            <div class="form-card">
+                <label for="notesTopic">What topic are you studying?</label>
+                <input id="notesTopic" type="text" placeholder="e.g. Machine Learning, Java Collections">
+
+                <label for="notesFormat">Choose your note format</label>
+                <select id="notesFormat">
+                    <option value="Quick revision">Quick revision notes</option>
+                    <option value="Detailed notes">Detailed notes</option>
+                    <option value="8-mark exam answer">8-mark exam answer</option>
+                    <option value="16-mark exam answer">16-mark exam answer</option>
+                    <option value="20-mark exam answer">20-mark exam answer</option>
+                    <option value="Definitions and key points">Definitions and key points</option>
+                    <option value="MCQs with answers">MCQs with answers</option>
+                    <option value="Viva questions and answers">Viva questions and answers</option>
+                </select>
+
+                <label for="notesLanguage">Explanation language</label>
+                <select id="notesLanguage">
+                    <option>Simple English</option>
+                    <option>Tamil</option>
+                    <option>Tanglish</option>
+                </select>
+
+                <button class="primary-button full-button" id="generateNotes">
+                    ✦ Generate study notes
+                </button>
+
+                <div class="output-box" id="notesOutput">
+                    <p>Your generated notes will appear here once AI is connected.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- YOUTUBE PAGE -->
+        <section class="page content-page" id="youtubePage">
+            <div class="page-heading">
+                <span class="eyebrow">VIDEO TO KNOWLEDGE</span>
+                <h1>YouTube Extractor <span>▶</span></h1>
+                <p>Transform educational videos into organized seminar notes.</p>
+            </div>
+
+            <div class="youtube-hero">
+                <div class="youtube-icon">▶</div>
+                <h2>Learn from any lecture.</h2>
+                <p>Paste an educational YouTube video link to get started.</p>
+
+                <form id="youtubeForm" class="youtube-form">
+                    <input
+                        id="youtubeUrl"
+                        type="url"
+                        placeholder="Paste YouTube video URL..."
+                        aria-label="YouTube video URL"
+                        required
+                    >
+                    <button type="submit" class="primary-button">Process video ↗</button>
+                </form>
+
+                <div class="youtube-features">
+                    <div><span>✓</span> Detailed seminar notes</div>
+                    <div><span>✓</span> Key points and summaries</div>
+                    <div><span>✓</span> Timestamps and Q&A</div>
+                </div>
+            </div>
+
+            <div class="section-title">
+                <h2>Video notes</h2>
+            </div>
+
+            <div id="youtubeOutput" class="output-box">
+                <p>Video summaries will appear here after transcript extraction and AI integration are implemented.</p>
+            </div>
+        </section>
+
+        <!-- QUIZ PAGE -->
+        <section class="page content-page" id="quizPage">
+            <div class="page-heading">
+                <span class="eyebrow">TEST YOURSELF</span>
+                <h1>Quiz & Flashcards <span>🧠</span></h1>
+                <p>Practice what you learn and strengthen your memory.</p>
+            </div>
+
+            <div class="feature-grid">
+                <button class="feature-card" id="quizAction">
+                    <span class="feature-icon purple">✧</span>
+                    <h2>Practice Quiz</h2>
+                    <p>Generate multiple-choice questions from a topic.</p>
+                    <span class="feature-link">Create a quiz →</span>
+                </button>
+
+                <button class="feature-card" id="flashcardAction">
+                    <span class="feature-icon blue">▤</span>
+                    <h2>Flashcards</h2>
+                    <p>Review definitions, concepts, and important facts.</p>
+                    <span class="feature-link">Create flashcards →</span>
+                </button>
+            </div>
+
+            <div id="quizOutput" class="output-box">
+                <p>Your practice materials will appear here after AI integration.</p>
+            </div>
+        </section>
+
+        <!-- LIBRARY PAGE -->
+        <section class="page content-page" id="libraryPage">
+            <div class="page-heading">
+                <span class="eyebrow">YOUR KNOWLEDGE SPACE</span>
+                <h1>My Library <span>▣</span></h1>
+                <p>Keep track of the study materials you add in this session.</p>
+            </div>
+
+            <div class="library-stats">
+                <div class="stat-card">
+                    <span>📄</span>
+                    <strong id="libraryFileCount">0</strong>
+                    <p>Uploaded files</p>
+                </div>
+                <div class="stat-card">
+                    <span>💬</span>
+                    <strong id="libraryChatCount">0</strong>
+                    <p>Messages sent</p>
+                </div>
+                <div class="stat-card">
+                    <span>🎥</span>
+                    <strong id="libraryVideoCount">0</strong>
+                    <p>Video links checked</p>
+                </div>
+            </div>
+
+            <div class="section-title">
+                <h2>Your activity</h2>
+            </div>
+
+            <div id="activityList" class="activity-list">
+                <p class="empty-state">Your activity will appear here.</p>
+            </div>
+        </section>
+
+        <footer class="app-footer">
+            Made for curious minds <span>♥</span>
+        </footer>
+
+    </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="app.js"></script>
+
+</body>
+</html>
