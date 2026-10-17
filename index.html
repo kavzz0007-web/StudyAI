@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#10111f">
-    <meta name="description" content="StudyAI - Your personal AI study assistant for notes, documents, quizzes, and video lectures.">
+    <meta name="description" content="StudyAI - Your personal AI study assistant.">
     <title>StudyAI — Your AI Study Partner</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -14,14 +14,14 @@
 
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
-
         <div class="brand">
             <div class="brand-icon">✦</div>
             <div>
                 <h2>StudyAI</h2>
                 <span>Your AI study partner</span>
             </div>
-            <button class="close-sidebar" id="closeSidebar" aria-label="Close menu">×</button>
+            <button class="close-sidebar" id="closeSidebar"
+                aria-label="Close menu">×</button>
         </div>
 
         <button class="new-chat" id="newChat">
@@ -34,30 +34,24 @@
             <button class="nav-item active" data-page="chat">
                 <span>◈</span> AI Chat
             </button>
-
             <button class="nav-item" data-page="files">
                 <span>▤</span> My Documents
             </button>
-
             <button class="nav-item" data-page="notes">
                 <span>✎</span> Study Notes
             </button>
-
             <button class="nav-item" data-page="youtube">
                 <span>▷</span> YouTube Extractor
             </button>
-
             <button class="nav-item" data-page="quiz">
                 <span>✧</span> Quiz & Flashcards
             </button>
-
             <button class="nav-item" data-page="library">
                 <span>▣</span> My Library
             </button>
         </nav>
 
         <div class="sidebar-bottom">
-
             <div class="upgrade-card">
                 <div class="upgrade-icon">✦</div>
                 <h3>Study smarter.</h3>
@@ -72,19 +66,15 @@
                 </div>
                 <span class="profile-menu">•••</span>
             </div>
-
         </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
+    <!-- MAIN -->
     <main class="main">
 
-        <!-- TOP BAR -->
         <header class="topbar">
-
-            <button class="menu-button" id="menuButton" aria-label="Open menu">
-                ☰
-            </button>
+            <button class="menu-button" id="menuButton"
+                aria-label="Open menu">☰</button>
 
             <div class="breadcrumb">
                 <span>Workspace</span>
@@ -96,16 +86,12 @@
                 <span class="status-dot"></span>
                 <span class="status-text">Study mode</span>
             </div>
-
         </header>
 
-        <!-- ==========================================
-             CHAT PAGE
-        =========================================== -->
+        <!-- CHAT PAGE -->
         <section class="page chat-page active" id="chatPage">
 
             <div class="welcome">
-
                 <div class="welcome-badge">
                     <span>✦</span> YOUR PERSONAL AI STUDY SPACE
                 </div>
@@ -119,540 +105,346 @@
                     Upload your notes, explore difficult concepts,
                     and turn lectures into knowledge.
                 </p>
-
             </div>
 
-            <!-- QUICK ACTIONS -->
             <div class="quick-actions">
-
                 <button class="quick-card"
                     data-prompt="Explain a difficult concept in simple English with real-life examples.">
-
                     <div class="quick-icon purple">✧</div>
                     <strong>Explain a topic</strong>
                     <span>Understand difficult concepts</span>
                     <span class="card-arrow">↗</span>
-
                 </button>
 
                 <button class="quick-card"
                     data-prompt="Help me generate detailed, exam-ready study notes.">
-
                     <div class="quick-icon blue">▤</div>
                     <strong>Create study notes</strong>
                     <span>Prepare for your exams</span>
                     <span class="card-arrow">↗</span>
-
                 </button>
 
                 <button class="quick-card"
                     data-prompt="Generate practice questions and MCQs to test my knowledge.">
-
                     <div class="quick-icon orange">✎</div>
                     <strong>Practice questions</strong>
                     <span>Test your understanding</span>
                     <span class="card-arrow">↗</span>
-
                 </button>
 
                 <button class="quick-card"
                     data-prompt="Help me prepare a seminar with an introduction, detailed content, and conclusion.">
-
                     <div class="quick-icon green">▷</div>
                     <strong>Prepare a seminar</strong>
                     <span>Organize your presentation</span>
                     <span class="card-arrow">↗</span>
-
                 </button>
-
             </div>
 
-            <!-- CHAT AREA -->
             <div class="chat-area">
-
                 <div class="chat-messages" id="chatMessages">
-
                     <div class="assistant-message">
-
                         <div class="message-avatar">✦</div>
-
                         <div class="message-content">
                             <strong>StudyAI</strong>
-
                             <p>Hey there! 👋 I'm your study assistant.</p>
-
                             <p>
                                 Ask me a question, choose a study tool,
                                 or upload a document to get started.
                             </p>
-
                             <span class="demo-label">
                                 StudyAI · AI study workspace
                             </span>
                         </div>
-
                     </div>
-
                 </div>
 
                 <form class="chat-composer" id="chatForm">
-
-                    <textarea
-                        id="chatInput"
-                        rows="1"
+                    <textarea id="chatInput" rows="1"
                         maxlength="4000"
                         placeholder="Ask anything about your studies..."
-                        aria-label="Your message"
-                    ></textarea>
+                        aria-label="Your message"></textarea>
 
                     <div class="composer-bottom">
-
                         <div class="composer-tools">
-
-                            <button type="button"
-                                class="tool-button"
+                            <button type="button" class="tool-button"
                                 id="attachButton">
                                 ＋ <span>Attach file</span>
                             </button>
 
-                            <button type="button"
-                                class="tool-button"
+                            <button type="button" class="tool-button"
                                 id="notesShortcut">
                                 ✎ <span>Study notes</span>
                             </button>
-
                         </div>
 
-                        <button
-                            type="submit"
-                            class="send-button"
-                            id="sendButton"
-                            aria-label="Send message">
+                        <button type="submit" class="send-button"
+                            id="sendButton" aria-label="Send message">
                             ↑
                         </button>
-
                     </div>
-
                 </form>
 
                 <p class="privacy-note">
                     StudyAI · Your personal learning workspace.
                 </p>
-
             </div>
-
         </section>
 
-        <!-- ==========================================
-             DOCUMENTS PAGE
-        =========================================== -->
+        <!-- DOCUMENTS + PDF ANALYZER -->
         <section class="page content-page" id="filesPage">
 
             <div class="page-heading">
                 <span class="eyebrow">YOUR MATERIALS</span>
-
                 <h1>My Documents <span>📚</span></h1>
-
                 <p>
-                    Upload your study materials and prepare them
-                    for AI-powered learning.
+                    Upload a PDF and turn it into summaries,
+                    exam notes, questions, and flashcards.
                 </p>
             </div>
 
             <div class="upload-zone" id="uploadZone">
-
                 <div class="upload-symbol">⇧</div>
-
                 <h2>Drop your study materials here</h2>
-
                 <p>Or choose files from your phone.</p>
 
-                <button class="primary-button" id="chooseFiles" type="button">
-                    Choose files
-                </button>
+                <button class="primary-button" id="chooseFiles"
+                    type="button">Choose files</button>
 
                 <span class="file-types">
-                    PDF, TXT, DOCX, PPTX · Maximum 10 MB per file
+                    PDF, TXT, DOCX, PPTX · PDF analysis limit: 3 MB
                 </span>
-
             </div>
 
-            <input
-                type="file"
-                id="fileInput"
+            <input type="file" id="fileInput"
                 accept=".pdf,.txt,.docx,.pptx"
-                multiple
-                hidden
-            >
+                multiple hidden>
+
+            <!-- PDF ANALYZER CONTROLS -->
+            <div class="form-card" id="pdfAnalyzer">
+
+                <h2>✦ AI PDF Analyzer</h2>
+                <p>
+                    Select a PDF above, choose what you want to generate,
+                    and let StudyAI help you study.
+                </p>
+
+                <label for="pdfTask">What do you want to create?</label>
+                <select id="pdfTask">
+                    <option value="summary">PDF Summary</option>
+                    <option value="study-notes">Exam-ready Study Notes</option>
+                    <option value="questions">Practice Questions</option>
+                    <option value="flashcards">Flashcards</option>
+                </select>
+
+                <label for="pdfLanguage">Output language</label>
+                <select id="pdfLanguage">
+                    <option value="Simple English">Simple English</option>
+                    <option value="Tamil">Tamil</option>
+                    <option value="Tanglish">Tanglish</option>
+                </select>
+
+                <p id="selectedPdfName" aria-live="polite">
+                    No PDF selected.
+                </p>
+
+                <button type="button"
+                    class="primary-button full-button"
+                    id="analyzePdfButton">
+                    ✦ Analyze PDF
+                </button>
+
+                <div class="output-box" id="pdfOutput"
+                    aria-live="polite">
+                    <p>Your PDF analysis will appear here.</p>
+                </div>
+            </div>
 
             <div class="section-title">
-                <h2>Uploaded files</h2>
+                <h2>Selected files</h2>
                 <span id="fileCount">0 files</span>
             </div>
 
             <div class="file-list" id="fileList">
-
                 <div class="empty-state">
                     <span>▤</span>
-                    <p>Your uploaded files will appear here.</p>
+                    <p>Your selected files will appear here.</p>
                 </div>
-
             </div>
 
             <p class="notice">
-                Uploading a file does not automatically mean its contents
-                can be read. Document text extraction and document-based
-                question answering require additional processing.
+                PDF analysis sends the selected PDF to your StudyAI
+                backend for text extraction and AI processing.
+                Only select files you are comfortable processing.
+                TXT, DOCX, and PPTX uploads are not analyzed by this
+                PDF-specific tool.
             </p>
-
         </section>
 
-        <!-- ==========================================
-             STUDY NOTES PAGE
-        =========================================== -->
+        <!-- STUDY NOTES -->
         <section class="page content-page" id="notesPage">
-
             <div class="page-heading">
-
                 <span class="eyebrow">SMART LEARNING</span>
-
                 <h1>Study Notes <span>✎</span></h1>
-
-                <p>
-                    Generate organized study notes for your learning
-                    and exam preparation.
-                </p>
-
+                <p>Generate organized study notes for exam preparation.</p>
             </div>
 
             <div class="form-card">
+                <label for="notesTopic">What topic are you studying?</label>
+                <input id="notesTopic" type="text"
+                    placeholder="e.g. Machine Learning, Java Collections">
 
-                <label for="notesTopic">
-                    What topic are you studying?
-                </label>
-
-                <input
-                    id="notesTopic"
-                    type="text"
-                    placeholder="e.g. Machine Learning, Java Collections"
-                    required
-                >
-
-                <label for="notesFormat">
-                    Choose your note format
-                </label>
-
+                <label for="notesFormat">Choose your note format</label>
                 <select id="notesFormat">
-
-                    <option value="Quick revision">
-                        Quick revision notes
-                    </option>
-
-                    <option value="Detailed notes">
-                        Detailed notes
-                    </option>
-
-                    <option value="8-mark exam answer">
-                        8-mark exam answer
-                    </option>
-
-                    <option value="16-mark exam answer">
-                        16-mark exam answer
-                    </option>
-
-                    <option value="20-mark exam answer">
-                        20-mark exam answer
-                    </option>
-
-                    <option value="Definitions and key points">
-                        Definitions and key points
-                    </option>
-
-                    <option value="MCQs with answers">
-                        MCQs with answers
-                    </option>
-
-                    <option value="Viva questions and answers">
-                        Viva questions and answers
-                    </option>
-
+                    <option value="Quick revision">Quick revision notes</option>
+                    <option value="Detailed notes">Detailed notes</option>
+                    <option value="8-mark exam answer">8-mark exam answer</option>
+                    <option value="16-mark exam answer">16-mark exam answer</option>
+                    <option value="20-mark exam answer">20-mark exam answer</option>
+                    <option value="Definitions and key points">Definitions and key points</option>
+                    <option value="MCQs with answers">MCQs with answers</option>
+                    <option value="Viva questions and answers">Viva questions and answers</option>
                 </select>
 
-                <label for="notesLanguage">
-                    Explanation language
-                </label>
-
+                <label for="notesLanguage">Explanation language</label>
                 <select id="notesLanguage">
                     <option>Simple English</option>
                     <option>Tamil</option>
                     <option>Tanglish</option>
                 </select>
 
-                <button
-                    class="primary-button full-button"
-                    id="generateNotes"
-                    type="button">
+                <button class="primary-button full-button"
+                    id="generateNotes" type="button">
                     ✦ Generate Study Notes
                 </button>
 
-                <div
-                    class="output-box"
-                    id="notesOutput"
+                <div class="output-box" id="notesOutput"
                     aria-live="polite">
-
                     <p>Your generated notes will appear here.</p>
-
                 </div>
-
             </div>
-
         </section>
 
-        <!-- ==========================================
-             YOUTUBE EXTRACTOR PAGE
-        =========================================== -->
+        <!-- YOUTUBE EXTRACTOR -->
         <section class="page content-page" id="youtubePage">
-
             <div class="page-heading">
-
                 <span class="eyebrow">VIDEO TO KNOWLEDGE</span>
-
                 <h1>YouTube Extractor <span>▶</span></h1>
-
                 <p>
                     Transform educational video transcripts into
                     organized seminar notes.
                 </p>
-
             </div>
 
             <div class="youtube-hero">
-
                 <div class="youtube-icon">▶</div>
-
                 <h2>Learn from any lecture.</h2>
-
                 <p>
                     Add a YouTube link and its transcript to create
                     seminar-ready study materials.
                 </p>
 
                 <form id="youtubeForm" class="youtube-form">
+                    <label for="youtubeUrl">YouTube video URL</label>
+                    <input id="youtubeUrl" type="url"
+                        placeholder="Paste YouTube video URL..." required>
 
-                    <label for="youtubeUrl">
-                        YouTube video URL
-                    </label>
-
-                    <input
-                        id="youtubeUrl"
-                        type="url"
-                        placeholder="Paste YouTube video URL..."
-                        aria-label="YouTube video URL"
-                        required
-                    >
-
-                    <label for="youtubeLanguage">
-                        Notes language
-                    </label>
-
+                    <label for="youtubeLanguage">Notes language</label>
                     <select id="youtubeLanguage" required>
-
-                        <option value="Simple English">
-                            Simple English
-                        </option>
-
-                        <option value="Tamil">
-                            Tamil
-                        </option>
-
-                        <option value="Tanglish">
-                            Tanglish
-                        </option>
-
+                        <option value="Simple English">Simple English</option>
+                        <option value="Tamil">Tamil</option>
+                        <option value="Tanglish">Tanglish</option>
                     </select>
 
-                    <label for="youtubeTranscript">
-                        Video transcript
-                    </label>
-
-                    <textarea
-                        id="youtubeTranscript"
-                        rows="9"
+                    <label for="youtubeTranscript">Video transcript</label>
+                    <textarea id="youtubeTranscript" rows="9"
                         maxlength="50000"
                         placeholder="Paste the video's transcript here..."
-                        aria-label="Video transcript"
-                        required
-                    ></textarea>
+                        required></textarea>
 
                     <p class="transcript-help">
-                        <strong>How to get a transcript:</strong>
-                        Open the video on YouTube. If available, use
-                        the video's menu and choose Show transcript.
-                        Copy the transcript and paste it above.
+                        Open the video's menu on YouTube and choose
+                        Show transcript if available. Copy and paste it here.
                     </p>
 
-                    <button
-                        type="submit"
+                    <button type="submit"
                         class="primary-button full-button"
                         id="generateYoutubeNotes">
                         ✦ Generate Seminar Notes
                     </button>
-
                 </form>
 
                 <div class="youtube-features">
-
-                    <div>
-                        <span>✓</span>
-                        Detailed seminar notes
-                    </div>
-
-                    <div>
-                        <span>✓</span>
-                        Important concepts and key points
-                    </div>
-
-                    <div>
-                        <span>✓</span>
-                        Seminar presentation script
-                    </div>
-
-                    <div>
-                        <span>✓</span>
-                        Viva questions and answers
-                    </div>
-
+                    <div>✓ Detailed seminar notes</div>
+                    <div>✓ Important concepts and key points</div>
+                    <div>✓ Seminar presentation script</div>
+                    <div>✓ Viva questions and answers</div>
                 </div>
-
             </div>
 
             <div class="section-title">
                 <h2>Generated Seminar Notes</h2>
             </div>
 
-            <div
-                id="youtubeOutput"
-                class="output-box"
+            <div id="youtubeOutput" class="output-box"
                 aria-live="polite">
-
-                <p>
-                    Your generated seminar notes will appear here.
-                </p>
-
+                <p>Your generated seminar notes will appear here.</p>
             </div>
-
         </section>
 
-        <!-- ==========================================
-             QUIZ & FLASHCARDS PAGE
-        =========================================== -->
+        <!-- QUIZ & FLASHCARDS -->
         <section class="page content-page" id="quizPage">
-
             <div class="page-heading">
-
                 <span class="eyebrow">TEST YOURSELF</span>
-
                 <h1>Quiz & Flashcards <span>🧠</span></h1>
-
-                <p>
-                    Practice what you learn and strengthen
-                    your memory.
-                </p>
-
+                <p>Practice what you learn and strengthen your memory.</p>
             </div>
 
             <div class="feature-grid">
-
                 <button class="feature-card" id="quizAction" type="button">
-
                     <span class="feature-icon purple">✧</span>
-
                     <h2>Practice Quiz</h2>
-
-                    <p>
-                        Generate multiple-choice questions
-                        from a topic.
-                    </p>
-
-                    <span class="feature-link">
-                        Create a quiz →
-                    </span>
-
+                    <p>Generate multiple-choice questions from a topic.</p>
+                    <span class="feature-link">Create a quiz →</span>
                 </button>
 
-                <button
-                    class="feature-card"
-                    id="flashcardAction"
-                    type="button">
-
+                <button class="feature-card" id="flashcardAction" type="button">
                     <span class="feature-icon blue">▤</span>
-
                     <h2>Flashcards</h2>
-
-                    <p>
-                        Review definitions, concepts,
-                        and important facts.
-                    </p>
-
-                    <span class="feature-link">
-                        Create flashcards →
-                    </span>
-
+                    <p>Review definitions, concepts, and important facts.</p>
+                    <span class="feature-link">Create flashcards →</span>
                 </button>
-
             </div>
 
-            <div
-                id="quizOutput"
-                class="output-box"
-                aria-live="polite">
-
-                <p>
-                    Your practice materials will appear here.
-                </p>
-
+            <div id="quizOutput" class="output-box" aria-live="polite">
+                <p>Your practice materials will appear here.</p>
             </div>
-
         </section>
 
-        <!-- ==========================================
-             MY LIBRARY PAGE
-        =========================================== -->
+        <!-- LIBRARY -->
         <section class="page content-page" id="libraryPage">
-
             <div class="page-heading">
-
                 <span class="eyebrow">YOUR KNOWLEDGE SPACE</span>
-
                 <h1>My Library <span>▣</span></h1>
-
-                <p>
-                    Keep track of the study materials you add
-                    during this session.
-                </p>
-
+                <p>Keep track of the study materials you add this session.</p>
             </div>
 
             <div class="library-stats">
-
                 <div class="stat-card">
                     <span>📄</span>
                     <strong id="libraryFileCount">0</strong>
                     <p>Uploaded files</p>
                 </div>
-
                 <div class="stat-card">
                     <span>💬</span>
                     <strong id="libraryChatCount">0</strong>
                     <p>Messages sent</p>
                 </div>
-
                 <div class="stat-card">
                     <span>🎥</span>
                     <strong id="libraryVideoCount">0</strong>
                     <p>Video links checked</p>
                 </div>
-
             </div>
 
             <div class="section-title">
@@ -660,34 +452,18 @@
             </div>
 
             <div id="activityList" class="activity-list">
-
-                <p class="empty-state">
-                    Your activity will appear here.
-                </p>
-
+                <p class="empty-state">Your activity will appear here.</p>
             </div>
-
         </section>
 
-        <!-- FOOTER -->
         <footer class="app-footer">
             Made for curious minds <span>♥</span>
         </footer>
-
     </main>
-
 </div>
 
-<!-- TOAST NOTIFICATIONS -->
-<div
-    class="toast"
-    id="toast"
-    role="status"
-    aria-live="polite">
-</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<!-- APPLICATION SCRIPT -->
 <script src="app.js"></script>
-
 </body>
 </html>
