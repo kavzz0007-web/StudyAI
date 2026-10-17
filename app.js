@@ -32,6 +32,7 @@ const state = {
 };
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_TRANSCRIPT_LENGTH = 50000;
 
 const ALLOWED_EXTENSIONS = [
     "pdf",
@@ -467,8 +468,7 @@ async function sendMessage(text) {
         appendMessage(
             "assistant",
             "Sorry, I couldn't get a response from the AI service. " +
-            "Please check that your project is deployed and the API key " +
-            "is configured in Vercel."
+            "Please check your deployment and API configuration."
         );
 
         console.error("StudyAI chat error:", error);
@@ -567,10 +567,8 @@ if (newChatButton) {
             messages.innerHTML = `
                 <div class="assistant-message">
                     <div class="message-avatar">✦</div>
-
                     <div class="message-content">
                         <strong>StudyAI</strong>
-
                         <p>New conversation started!</p>
                         <p>Ask a question or choose a study tool.</p>
                     </div>
@@ -903,32 +901,37 @@ if (generateNotesButton) {
                 ? data.notes
                 : "No notes were returned.";
 
-            output.innerHTML = `
-                <h3>Study Notes: ${escapeHTML(topic)}</h3>
+            const heading = document.createElement("h3");
+            heading.textContent = "Study Notes: " + topic;
 
-                <div class="generated-notes">
-                    ${escapeHTML(notes).replace(/\n/g, "<br>")}
-                </div>
-            `;
+            const notesContainer = document.createElement("div");
+            notesContainer.className = "generated-notes";
+            notesContainer.textContent = notes;
+
+            output.replaceChildren(heading, notesContainer);
 
             addActivity("Generated study notes: " + topic);
             showToast("Study notes generated successfully.");
+
         } catch (error) {
             console.error("StudyAI notes error:", error);
 
             output.innerHTML = `
                 <h3>Unable to generate notes</h3>
-                <p>
-                    The AI service could not process this request.
-                    Check your Vercel deployment and API configuration.
-                </p>
+                <p id="notesErrorMessage"></p>
             `;
 
-            showToast(
-                error instanceof Error
-                    ? error.message
-                    : "Study notes generation failed."
-            );
+            const errorMessage = getElement("notesErrorMessage");
+
+            if (errorMessage) {
+                errorMessage.textContent =
+                    error instanceof Error
+                        ? error.message
+                        : "Study notes generation failed.";
+            }
+
+            showToast("Study notes generation failed.");
+
         } finally {
             state.isNotesLoading = false;
             generateNotesButton.disabled = false;
@@ -938,7 +941,10 @@ if (generateNotesButton) {
 
 /* ---------- YOUTUBE URL VALIDATION ---------- */
 
-/** @param {string} input */
+/**
+ * @param {string} input
+ * @returns {string|null}
+ */
 function getYouTubeVideoId(input) {
     try {
         const url = new URL(input.trim());
@@ -959,7 +965,9 @@ function getYouTubeVideoId(input) {
         }
 
         if (host === "youtu.be") {
-            const id = url.pathname.split("/").filter(Boolean)[0];
+            const id = url.pathname
+                .split("/")
+                .filter(Boolean)[0];
 
             return id && /^[\w-]{11}$/.test(id)
                 ? id
@@ -979,60 +987,209 @@ function getYouTubeVideoId(input) {
         );
 
         return match ? match[1] : null;
+
     } catch (error) {
         return null;
     }
 }
 
-/* ---------- YOUTUBE FORM ---------- */
+/* ---------- YOUTUBE SEMINAR NOTES ---------- */
+
+let isYouTubeLoading = false;
 
 const youtubeForm = getElement("youtubeForm");
 
 if (youtubeForm) {
-    youtubeForm.addEventListener("submit", (event) => {
+    youtubeForm.addEventListener("submit", async (event) => {
         event.preventDefault();
 
-        const input = getElement("youtubeUrl");
-        const output = getElement("youtubeOutput");
-
-        if (!(input instanceof HTMLInputElement) || !output) {
+        if (isYouTubeLoading) {
+            showToast("Please wait while your seminar notes are generated.");
             return;
         }
 
-        const videoId = getYouTubeVideoId(input.value.trim());
+        const urlInput = getElement("youtubeUrl");
+        const transcriptInput = getElement("youtubeTranscript");
+        const languageInput = getElement("youtubeLanguage");
+        const output = getElement("youtubeOutput");
+        const submitButton = getElement("generateYoutubeNotes");
+
+        if (
+            !(urlInput instanceof HTMLInputElement) ||
+            !(transcriptInput instanceof HTMLTextAreaElement) ||
+            !output
+        ) {
+            showToast(
+                "YouTube form elements are missing. Check your index.html."
+            );
+            return;
+        }
+
+        const videoUrl = urlInput.value.trim();
+        const transcript = transcriptInput.value.trim();
+
+        const language =
+            languageInput instanceof HTMLSelectElement
+                ? languageInput.value
+                : "Simple English";
+
+        const videoId = getYouTubeVideoId(videoUrl);
 
         if (!videoId) {
-            showToast("Enter a valid YouTube video URL.");
-            input.focus();
+            showToast("Please enter a valid YouTube video URL.");
+            urlInput.focus();
             return;
         }
 
-        state.videosChecked += 1;
+        if (!transcript) {
+            showToast("Please paste the video transcript first.");
+            transcriptInput.focus();
+            return;
+        }
 
-        updateStatistics();
-        addActivity("Validated a YouTube video link");
+        if (transcript.length < 50) {
+            showToast("Please paste a longer video transcript.");
+            transcriptInput.focus();
+            return;
+        }
 
-        const videoLink = document.createElement("a");
-        videoLink.href = "https://www.youtube.com/watch?v=" + videoId;
-        videoLink.target = "_blank";
-        videoLink.rel = "noopener noreferrer";
-        videoLink.textContent = "Open YouTube video";
+        if (transcript.length > MAX_TRANSCRIPT_LENGTH) {
+            showToast("The transcript exceeds the 50,000-character limit.");
+            transcriptInput.focus();
+            return;
+        }
+
+        isYouTubeLoading = true;
+
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = "Generating notes...";
+        }
 
         output.innerHTML = `
-            <h3>Video link accepted ✓</h3>
-            <p><strong>Video ID:</strong> ${escapeHTML(videoId)}</p>
-            <p>
-                The link is valid. Transcript extraction and seminar-note
-                generation are not connected yet.
-            </p>
-            <span class="demo-label">
-                Link validation complete · Transcript not extracted
-            </span>
+            <h3>✦ Preparing your seminar notes...</h3>
+            <p>StudyAI is organizing the transcript into useful study material.</p>
+            <p>Please wait. ✨</p>
         `;
 
-        output.appendChild(videoLink);
+        try {
+            const data = await callAPI("/api/youtube", {
+                url: videoUrl,
+                videoId: videoId,
+                transcript: transcript,
+                language: language
+            });
 
-        showToast("YouTube link validated.");
+            const notes = typeof data.notes === "string"
+                ? data.notes
+                : "";
+
+            if (!notes.trim()) {
+                throw new Error(
+                    "The AI returned empty seminar notes. Please try again."
+                );
+            }
+
+            state.videosChecked += 1;
+
+            updateStatistics();
+
+            addActivity("Generated YouTube seminar notes");
+
+            const heading = document.createElement("h3");
+            heading.textContent = "Your Seminar Notes";
+
+            const videoLink = document.createElement("a");
+            videoLink.href =
+                "https://www.youtube.com/watch?v=" + videoId;
+            videoLink.target = "_blank";
+            videoLink.rel = "noopener noreferrer";
+            videoLink.textContent = "▶ Open original YouTube video";
+
+            const languageLabel = document.createElement("p");
+            languageLabel.textContent = "Notes language: " + language;
+
+            const notesContainer = document.createElement("div");
+            notesContainer.className = "generated-notes";
+            notesContainer.textContent = notes;
+
+            const copyButton = document.createElement("button");
+            copyButton.type = "button";
+            copyButton.className = "primary-button";
+            copyButton.textContent = "Copy Seminar Notes";
+
+            copyButton.addEventListener("click", async () => {
+                try {
+                    if (
+                        navigator.clipboard &&
+                        typeof navigator.clipboard.writeText === "function"
+                    ) {
+                        await navigator.clipboard.writeText(notes);
+                    } else {
+                        const temporary = document.createElement("textarea");
+
+                        temporary.value = notes;
+                        temporary.style.position = "fixed";
+                        temporary.style.opacity = "0";
+
+                        document.body.appendChild(temporary);
+                        temporary.select();
+
+                        const copied = document.execCommand("copy");
+
+                        temporary.remove();
+
+                        if (!copied) {
+                            throw new Error("Copy failed.");
+                        }
+                    }
+
+                    showToast("Seminar notes copied successfully!");
+
+                } catch (error) {
+                    showToast(
+                        "Copy unavailable. Select the notes and copy them manually."
+                    );
+                }
+            });
+
+            output.replaceChildren(
+                heading,
+                videoLink,
+                languageLabel,
+                notesContainer,
+                copyButton
+            );
+
+            showToast("Seminar notes generated successfully!");
+
+        } catch (error) {
+            console.error("StudyAI YouTube error:", error);
+
+            output.innerHTML = `
+                <h3>Unable to generate seminar notes</h3>
+                <p id="youtubeErrorMessage"></p>
+            `;
+
+            const errorMessage = getElement("youtubeErrorMessage");
+
+            if (errorMessage) {
+                errorMessage.textContent =
+                    error instanceof Error
+                        ? error.message
+                        : "Please check your connection and try again.";
+            }
+
+            showToast("Seminar generation failed.");
+
+        } finally {
+            isYouTubeLoading = false;
+
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = "✦ Generate Seminar Notes";
+            }
+        }
     });
 }
 
@@ -1047,10 +1204,7 @@ function showStudyToolPreview(toolName) {
     if (output) {
         output.innerHTML = `
             <h3>${escapeHTML(toolName)}</h3>
-
-            <p>
-                Enter a topic below to generate a quiz using StudyAI.
-            </p>
+            <p>Enter a topic below to generate a quiz using StudyAI.</p>
         `;
     }
 
@@ -1074,23 +1228,6 @@ if (flashcardAction) {
 }
 
 /* ---------- QUIZ FORM ---------- */
-
-/*
-Expected optional HTML:
-<form id="quizForm">
-    <input id="quizTopic">
-    <input id="quizCount" type="number" value="5">
-    <select id="quizDifficulty">
-        <option value="easy">Easy</option>
-        <option value="medium">Medium</option>
-        <option value="hard">Hard</option>
-    </select>
-    <button type="submit">Generate Quiz</button>
-</form>
-<div id="quizOutput"></div>
-
-If your current HTML does not have quizForm, the listener is skipped.
-*/
 
 const quizForm = getElement("quizForm");
 
@@ -1180,21 +1317,26 @@ if (quizForm) {
 
             addActivity("Generated a quiz: " + topic);
             showToast("Quiz generated successfully.");
+
         } catch (error) {
             console.error("StudyAI quiz error:", error);
 
             output.innerHTML = `
                 <h3>Unable to generate quiz</h3>
-                <p>
-                    Please check your API configuration and try again.
-                </p>
+                <p id="quizErrorMessage"></p>
             `;
 
-            showToast(
-                error instanceof Error
-                    ? error.message
-                    : "Quiz generation failed."
-            );
+            const errorMessage = getElement("quizErrorMessage");
+
+            if (errorMessage) {
+                errorMessage.textContent =
+                    error instanceof Error
+                        ? error.message
+                        : "Please check your API configuration.";
+            }
+
+            showToast("Quiz generation failed.");
+
         } finally {
             state.isQuizLoading = false;
 
@@ -1232,10 +1374,13 @@ function renderQuiz(quiz) {
 
     output.innerHTML = `
         <h3>${escapeHTML(title)}</h3>
+
         <p class="quiz-score" id="quizScore">
             Answer the questions and check your score.
         </p>
+
         <div id="quizQuestions"></div>
+
         <button type="button" id="checkQuizAnswers">
             Check Answers
         </button>
@@ -1317,7 +1462,10 @@ function renderQuiz(quiz) {
                     }
                 }
 
-                if (selectedIndex === correctIndex) {
+                if (
+                    selectedIndex >= 0 &&
+                    selectedIndex === correctIndex
+                ) {
                     score += 1;
                 }
 
