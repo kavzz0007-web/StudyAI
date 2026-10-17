@@ -1,1600 +1,919 @@
 "use strict";
 
 /* ==========================================
-   STUDYAI — COMPLETE FRONTEND APPLICATION
-   Backend endpoints:
-   /api/chat
-   /api/notes
-   /api/quiz
-   /api/youtube
-   /api/analyze-pdf
+   STUDYAI — FRONTEND APPLICATION
 ========================================== */
 
 const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => document.querySelectorAll(selector);
 
 const state = {
-    messagesSent: 0,
-    videosChecked: 0,
-    files: [],
-    activities: [],
-    currentPage: "chat",
-    toastTimer: null,
-    isChatLoading: false,
-    isNotesLoading: false,
-    isQuizLoading: false,
-    isPdfAnalyzing: false,
-    quiz: null,
-    quizIndex: 0,
-    quizAnswers: [],
-    selectedPdfId: null
+  messagesSent: 0,
+  notesGenerated: 0,
+  files: [],
+  selectedPdf: null,
+  quiz: [],
+  quizAnswers: {},
+  activity: []
 };
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_PDF_SIZE = 3 * 1024 * 1024;
-const MAX_TRANSCRIPT_LENGTH = 50000;
 
-const ALLOWED_EXTENSIONS = [
-    "pdf",
-    "txt",
-    "docx",
-    "pptx"
-];
+const ALLOWED_EXTENSIONS = ["pdf", "txt", "docx", "pptx"];
 
-/* ---------- DOM HELPERS ---------- */
+const PAGE_INFO = {
+  home: ["Welcome to StudyAI", "Make learning easier, every day."],
+  chat: ["AI Study Chat", "Ask questions and understand concepts."],
+  notes: ["Notes Generator", "Create your personalized study notes."],
+  youtube: ["YouTube Summarizer", "Turn educational videos into notes."],
+  quiz: ["Practice Quiz", "Test your knowledge and improve."],
+  files: ["Study Files", "Upload files and analyze PDFs."]
+};
 
-function getElement(...selectors) {
-    for (const selector of selectors) {
-        const element = $(selector);
+/* ---------- HELPERS ---------- */
 
-        if (element) {
-            return element;
-        }
-    }
-
-    return null;
+function getElement(id) {
+  return document.getElementById(id);
 }
 
 function escapeHTML(value) {
-    return String(value ?? "").replace(/[&<>"']/g, (character) => {
-        const replacements = {
-            "&": "&amp;",
-            "<": "&lt;",
-            ">": "&gt;",
-            '"': "&quot;",
-            "'": "&#39;"
-        };
+  return String(value ?? "").replace(/[&<>"']/g, (char) => {
+    const entities = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    };
 
-        return replacements[character];
-    });
+    return entities[char];
+  });
+}
+
+function showToast(message) {
+  const toast = getElement("toast");
+
+  if (!toast) {
+    alert(message);
+    return;
+  }
+
+  toast.textContent = message;
+  toast.classList.add("show");
+
+  clearTimeout(showToast.timer);
+
+  showToast.timer = setTimeout(() => {
+    toast.classList.remove("show");
+  }, 2800);
+}
+
+function setLoading(button, loading, loadingText) {
+  if (!button) return;
+
+  if (loading) {
+    button.dataset.originalText = button.textContent;
+    button.textContent = loadingText || "Please wait...";
+    button.disabled = true;
+  } else {
+    button.textContent =
+      button.dataset.originalText || button.textContent;
+
+    button.disabled = false;
+  }
+}
+
+function setOutput(id, text) {
+  const element = getElement(id);
+
+  if (!element) return;
+
+  // Plain text rendering avoids injecting AI-generated HTML.
+  element.textContent = String(text ?? "");
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + " B";
+
+  if (bytes < 1024 * 1024) {
+    return (bytes / 1024).toFixed(1) + " KB";
+  }
+
+  return (bytes / (1024 * 1024)).toFixed(2) + " MB";
 }
 
 function getExtension(filename) {
-    const parts = String(filename).split(".");
-    return parts.length > 1
-        ? parts.pop().toLowerCase()
-        : "";
+  const parts = filename.toLowerCase().split(".");
+  return parts.length > 1 ? parts.pop() : "";
 }
 
-function formatFileSize(bytes) {
-    if (bytes < 1024) {
-        return `${bytes} B`;
-    }
-
-    if (bytes < 1024 * 1024) {
-        return `${(bytes / 1024).toFixed(1)} KB`;
-    }
-
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+function updateStats() {
+  getElement("messagesCount").textContent = state.messagesSent;
+  getElement("notesCount").textContent = state.notesGenerated;
+  getElement("filesCount").textContent = state.files.length;
 }
 
-/* ---------- NOTIFICATIONS ---------- */
-
-function showToast(message, type = "info") {
-    let toast = getElement("#toast", "#toastMessage");
-
-    if (!toast) {
-        toast = document.createElement("div");
-        toast.id = "toast";
-        toast.setAttribute("role", "status");
-
-        Object.assign(toast.style, {
-            position: "fixed",
-            bottom: "24px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: "99999",
-            padding: "12px 18px",
-            borderRadius: "12px",
-            background: "#20243a",
-            color: "#ffffff",
-            maxWidth: "90%",
-            fontSize: "14px",
-            boxShadow: "0 6px 25px rgba(0,0,0,.2)"
-        });
-
-        document.body.appendChild(toast);
-    }
-
-    toast.textContent = message;
-
-    toast.style.display = "block";
-
-    if (state.toastTimer) {
-        clearTimeout(state.toastTimer);
-    }
-
-    state.toastTimer = setTimeout(() => {
-        toast.style.display = "none";
-    }, 3500);
-}
-
-/* ---------- ACTIVITY TRACKING ---------- */
-
-function addActivity(title, description = "") {
-    state.activities.unshift({
-        id: Date.now() + Math.random(),
-        title,
-        description,
-        date: new Date().toLocaleString()
-    });
-
-    state.activities = state.activities.slice(0, 30);
-
-    renderActivity();
-    updateStatistics();
-}
-
-function renderActivity() {
-    const container = getElement(
-        "#activityList",
-        "#recentActivity",
-        "#activityContainer"
-    );
-
-    if (!container) {
-        return;
-    }
-
-    if (state.activities.length === 0) {
-        container.innerHTML =
-            '<p class="empty-state">Your recent activities will appear here.</p>';
-
-        return;
-    }
-
-    container.innerHTML = state.activities.map((activity) => `
-        <div class="activity-item">
-            <div>
-                <strong>${escapeHTML(activity.title)}</strong>
-                <p>${escapeHTML(activity.description)}</p>
-                <small>${escapeHTML(activity.date)}</small>
-            </div>
-        </div>
-    `).join("");
-}
-
-function updateStatistics() {
-    const messages = getElement("#messagesSent", "#messageCount");
-    const videos = getElement("#videosChecked", "#videoCount");
-    const files = getElement("#fileCount");
-    const activities = getElement("#activityCount");
-
-    if (messages) {
-        messages.textContent = state.messagesSent;
-    }
-
-    if (videos) {
-        videos.textContent = state.videosChecked;
-    }
-
-    if (files) {
-        files.textContent = state.files.length;
-    }
-
-    if (activities) {
-        activities.textContent = state.activities.length;
-    }
-}
-
-/* ---------- API CONNECTION ---------- */
+/* ---------- API REQUESTS ---------- */
 
 async function callAPI(endpoint, payload) {
-    const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
+  let response;
+
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
     });
+  } catch (error) {
+    throw new Error(
+      "Unable to connect to the server. Check your internet connection and deployment."
+    );
+  }
 
-    let data;
+  let data;
 
-    try {
-        data = await response.json();
-    } catch {
-        throw new Error(
-            "The server returned an invalid response."
-        );
+  try {
+    data = await response.json();
+  } catch (error) {
+    throw new Error(
+      "The server returned an invalid response. Check your API deployment."
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data.error ||
+      data.message ||
+      "Request failed with status " + response.status
+    );
+  }
+
+  return data;
+}
+
+function extractText(data, keys) {
+  for (const key of keys) {
+    if (typeof data[key] === "string" && data[key].trim()) {
+      return data[key].trim();
     }
+  }
 
-    if (!response.ok || data.success === false) {
-        throw new Error(
-            data.error ||
-            data.message ||
-            `Request failed (${response.status}).`
-        );
-    }
+  if (data.data && typeof data.data === "string") {
+    return data.data;
+  }
 
-    return data;
+  return "";
 }
 
 /* ---------- PAGE NAVIGATION ---------- */
 
 function navigateTo(pageName) {
-    state.currentPage = pageName;
+  if (!PAGE_INFO[pageName]) {
+    pageName = "home";
+  }
 
-    const pageAliases = {
-        chat: ["chatPage", "chat"],
-        notes: ["notesPage", "notes"],
-        youtube: ["youtubePage", "youtube"],
-        quiz: ["quizPage", "quiz"],
-        files: ["filesPage", "files"],
-        library: ["libraryPage", "library"],
-        dashboard: ["dashboardPage", "dashboard"]
-    };
+  document.querySelectorAll(".page").forEach((page) => {
+    page.classList.remove("active");
+  });
 
-    const allPages = [
-        "#chatPage",
-        "#notesPage",
-        "#youtubePage",
-        "#quizPage",
-        "#filesPage",
-        "#libraryPage",
-        "#dashboardPage"
-    ];
+  const target = getElement(pageName + "Page");
 
-    allPages.forEach((selector) => {
-        const page = $(selector);
+  if (target) {
+    target.classList.add("active");
+  }
 
-        if (page) {
-            page.hidden = true;
-            page.style.display = "none";
-        }
-    });
+  document.querySelectorAll("[data-page]").forEach((button) => {
+    button.classList.toggle(
+      "active",
+      button.dataset.page === pageName
+    );
+  });
 
-    const matchingSelectors = pageAliases[pageName] || [];
+  getElement("pageTitle").textContent = PAGE_INFO[pageName][0];
+  getElement("pageSubtitle").textContent = PAGE_INFO[pageName][1];
 
-    let selectedPage = null;
-
-    for (const id of matchingSelectors) {
-        const page = $(`#${id}`);
-
-        if (page) {
-            selectedPage = page;
-            break;
-        }
-    }
-
-    if (selectedPage) {
-        selectedPage.hidden = false;
-        selectedPage.style.display = "";
-    }
-
-    $$("[data-page]").forEach((button) => {
-        const active = button.dataset.page === pageName;
-
-        button.classList.toggle("active", active);
-
-        if (active) {
-            button.setAttribute("aria-current", "page");
-        } else {
-            button.removeAttribute("aria-current");
-        }
-    });
-
-    $$(".nav-link, .sidebar-link").forEach((button) => {
-        const target =
-            button.dataset.page ||
-            button.dataset.target;
-
-        if (target) {
-            button.classList.toggle(
-                "active",
-                target === pageName
-            );
-        }
-    });
-
-    const sidebar = getElement("#sidebar");
-
-    if (sidebar) {
-        sidebar.classList.remove("open");
-    }
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function initializeNavigation() {
-    document.addEventListener("click", (event) => {
-        const button = event.target.closest(
-            "[data-page], [data-target]"
-        );
-
-        if (!button) {
-            return;
-        }
-
-        const page =
-            button.dataset.page ||
-            button.dataset.target;
-
-        if (!page) {
-            return;
-        }
-
-        event.preventDefault();
-        navigateTo(page);
+  document.querySelectorAll("[data-page]").forEach((button) => {
+    button.addEventListener("click", () => {
+      navigateTo(button.dataset.page);
     });
+  });
 
-    const menuButton = getElement(
-        "#menuToggle",
-        "#sidebarToggle",
-        "#mobileMenuButton"
-    );
-
-    if (menuButton) {
-        menuButton.addEventListener("click", () => {
-            const sidebar = getElement("#sidebar");
-
-            if (sidebar) {
-                sidebar.classList.toggle("open");
-            }
-        });
-    }
+  document.querySelectorAll("[data-go]").forEach((button) => {
+    button.addEventListener("click", () => {
+      navigateTo(button.dataset.go);
+    });
+  });
 }
 
-/* ---------- CHAT ---------- */
+/* ---------- AI CHAT ---------- */
 
-function getChatElements() {
-    return {
-        input: getElement(
-            "#chatInput",
-            "#messageInput",
-            "#userInput"
-        ),
+function addChatMessage(text, role) {
+  const container = getElement("chatMessages");
+  const message = document.createElement("div");
 
-        sendButton: getElement(
-            "#sendButton",
-            "#sendMessage",
-            "#chatSendButton"
-        ),
+  message.className = "message " + role;
+  message.textContent = text;
 
-        messages: getElement(
-            "#chatMessages",
-            "#messagesContainer",
-            "#chatContainer"
-        )
-    };
+  container.appendChild(message);
+  container.scrollTop = container.scrollHeight;
+
+  return message;
 }
 
-function appendChatMessage(role, text) {
-    const { messages } = getChatElements();
+function initializeChat() {
+  const form = getElement("chatForm");
+  const input = getElement("chatInput");
+  const button = getElement("sendChat");
 
-    if (!messages) {
-        showToast("Chat message container was not found.", "error");
-        return;
-    }
-
-    const message = document.createElement("div");
-
-    message.className =
-        role === "user"
-            ? "chat-message user-message"
-            : "chat-message assistant-message";
-
-    const label = document.createElement("strong");
-    label.textContent =
-        role === "user" ? "You" : "StudyAI";
-
-    const content = document.createElement("div");
-    content.className = "message-content";
-    content.textContent = text;
-
-    message.append(label, content);
-    messages.appendChild(message);
-
-    messages.scrollTop = messages.scrollHeight;
-
-    return message;
-}
-
-async function sendChatMessage() {
-    if (state.isChatLoading) {
-        return;
-    }
-
-    const { input } = getChatElements();
-
-    if (!input) {
-        showToast("Chat input was not found.", "error");
-        return;
-    }
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
     const message = input.value.trim();
 
     if (!message) {
-        showToast("Enter a question first.");
-        return;
+      showToast("Please enter your question.");
+      return;
     }
 
-    state.isChatLoading = true;
-
-    appendChatMessage("user", message);
+    addChatMessage(message, "user");
 
     input.value = "";
+    state.messagesSent++;
+    updateStats();
 
-    const sendButton = getChatElements().sendButton;
+    const pending = addChatMessage("Thinking...", "assistant");
 
-    if (sendButton) {
-        sendButton.disabled = true;
-    }
-
-    const loadingMessage = appendChatMessage(
-        "assistant",
-        "Thinking..."
-    );
+    setLoading(button, true, "Thinking...");
 
     try {
-        const result = await callAPI("/api/chat", {
-            message
-        });
+      const data = await callAPI("/api/chat", {
+        message: message
+      });
 
-        const answer =
-            result.reply ||
-            result.response ||
-            result.answer ||
-            result.text;
+      const answer = extractText(data, [
+        "reply",
+        "response",
+        "answer",
+        "text",
+        "result"
+      ]);
 
-        if (!answer) {
-            throw new Error("The AI returned an empty response.");
-        }
+      if (!answer) {
+        throw new Error("The AI returned an empty answer.");
+      }
 
-        const content = loadingMessage
-            ? loadingMessage.querySelector(".message-content")
-            : null;
-
-        if (content) {
-            content.textContent = answer;
-        }
-
-        state.messagesSent += 1;
-
-        addActivity(
-            "AI Chat",
-            message.slice(0, 100)
-        );
+      pending.textContent = answer;
     } catch (error) {
-        if (loadingMessage) {
-            const content =
-                loadingMessage.querySelector(".message-content");
-
-            if (content) {
-                content.textContent =
-                    `Sorry, something went wrong: ${error.message}`;
-            }
-        }
-
-        showToast(error.message, "error");
+      pending.textContent = "Error: " + error.message;
     } finally {
-        state.isChatLoading = false;
-
-        if (sendButton) {
-            sendButton.disabled = false;
-        }
-
-        updateStatistics();
+      setLoading(button, false);
     }
+  });
+
+  getElement("clearChat").addEventListener("click", () => {
+    getElement("chatMessages").replaceChildren();
+
+    addChatMessage(
+      "Chat cleared! 👋 Ask me a new study question.",
+      "assistant"
+    );
+
+    showToast("Conversation cleared.");
+  });
 }
 
-function initializeChat() {
-    const { input, sendButton } = getChatElements();
-
-    if (sendButton) {
-        sendButton.addEventListener("click", sendChatMessage);
-    }
-
-    if (input) {
-        input.addEventListener("keydown", (event) => {
-            if (
-                event.key === "Enter" &&
-                !event.shiftKey
-            ) {
-                event.preventDefault();
-                sendChatMessage();
-            }
-        });
-    }
-}
-
-/* ---------- STUDY NOTES ---------- */
-
-async function generateNotes() {
-    if (state.isNotesLoading) {
-        return;
-    }
-
-    const topicInput = getElement(
-        "#notesTopic",
-        "#topicInput",
-        "#notesInput"
-    );
-
-    const output = getElement(
-        "#notesOutput",
-        "#generatedNotes",
-        "#notesResult"
-    );
-
-    const topic = topicInput
-        ? topicInput.value.trim()
-        : "";
-
-    if (!topic) {
-        showToast("Enter a topic for your study notes.");
-        return;
-    }
-
-    const languageInput = getElement(
-        "#notesLanguage",
-        "#languageSelect"
-    );
-
-    const detailInput = getElement(
-        "#notesDetail",
-        "#notesLength"
-    );
-
-    state.isNotesLoading = true;
-
-    const button = getElement(
-        "#generateNotesButton",
-        "#generateNotes",
-        "#notesButton"
-    );
-
-    if (button) {
-        button.disabled = true;
-        button.textContent = "Generating...";
-    }
-
-    if (output) {
-        output.textContent = "Preparing your study notes...";
-    }
-
-    try {
-        const result = await callAPI("/api/notes", {
-            topic,
-            language: languageInput
-                ? languageInput.value
-                : "Simple English",
-            detail: detailInput
-                ? detailInput.value
-                : "medium"
-        });
-
-        const text =
-            result.notes ||
-            result.result ||
-            result.text ||
-            result.response;
-
-        if (!text) {
-            throw new Error("No notes were returned.");
-        }
-
-        if (output) {
-            output.textContent = text;
-        }
-
-        addActivity("Study Notes", topic);
-
-        showToast("Study notes generated successfully!");
-    } catch (error) {
-        if (output) {
-            output.textContent = error.message;
-        }
-
-        showToast(error.message, "error");
-    } finally {
-        state.isNotesLoading = false;
-
-        if (button) {
-            button.disabled = false;
-            button.textContent = "Generate Notes";
-        }
-    }
-}
+/* ---------- NOTES GENERATOR ---------- */
 
 function initializeNotes() {
-    const button = getElement(
-        "#generateNotesButton",
-        "#generateNotes",
-        "#notesButton"
-    );
+  const form = getElement("notesForm");
+  const button = getElement("generateNotes");
 
-    if (button) {
-        button.addEventListener("click", generateNotes);
-    }
-}
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-/* ---------- YOUTUBE SEMINAR ANALYZER ---------- */
+    const topic = getElement("notesTopic").value.trim();
+    const language = getElement("notesLanguage").value;
+    const detail = getElement("notesDetail").value;
 
-function extractYouTubeVideoId(url) {
-    try {
-        const parsed = new URL(url);
-
-        if (
-            parsed.hostname === "youtu.be" ||
-            parsed.hostname.endsWith(".youtu.be")
-        ) {
-            return parsed.pathname.slice(1).split("/")[0];
-        }
-
-        if (
-            parsed.hostname.includes("youtube.com") ||
-            parsed.hostname.includes("youtube-nocookie.com")
-        ) {
-            if (parsed.pathname === "/watch") {
-                return parsed.searchParams.get("v");
-            }
-
-            const parts = parsed.pathname.split("/").filter(Boolean);
-
-            if (
-                ["embed", "shorts", "live"].includes(parts[0])
-            ) {
-                return parts[1] || null;
-            }
-        }
-    } catch {
-        return null;
+    if (!topic) {
+      showToast("Enter a topic first.");
+      return;
     }
 
-    return null;
-}
+    setOutput("notesOutput", "Generating notes...");
 
-async function analyzeYouTube() {
-    const urlInput = getElement(
-        "#youtubeUrl",
-        "#videoUrl",
-        "#youtubeInput"
-    );
-
-    const output = getElement(
-        "#youtubeOutput",
-        "#videoSummary",
-        "#youtubeResult"
-    );
-
-    const url = urlInput
-        ? urlInput.value.trim()
-        : "";
-
-    if (!url) {
-        showToast("Paste a YouTube video link.");
-        return;
-    }
-
-    const videoId = extractYouTubeVideoId(url);
-
-    if (!videoId) {
-        showToast("Enter a valid YouTube video URL.", "error");
-        return;
-    }
-
-    const button = getElement(
-        "#analyzeYoutubeButton",
-        "#analyzeVideo",
-        "#youtubeButton"
-    );
-
-    if (button) {
-        button.disabled = true;
-        button.textContent = "Analyzing...";
-    }
-
-    if (output) {
-        output.textContent = "Analyzing video...";
-    }
+    setLoading(button, true, "Generating...");
 
     try {
-        const result = await callAPI("/api/youtube", {
-            url,
-            videoId,
-            maxLength: MAX_TRANSCRIPT_LENGTH
-        });
+      const data = await callAPI("/api/notes", {
+        topic: topic,
+        language: language,
+        detail: detail
+      });
 
-        const text =
-            result.summary ||
-            result.result ||
-            result.transcript ||
-            result.text ||
-            result.response;
+      const notes = extractText(data, [
+        "notes",
+        "result",
+        "text",
+        "response",
+        "answer"
+      ]);
 
-        if (!text) {
-            throw new Error(
-                "No summary was returned. Check your YouTube backend."
-            );
-        }
+      if (!notes) {
+        throw new Error("No notes returned by the server.");
+      }
 
-        if (output) {
-            output.textContent = text;
-        }
+      setOutput("notesOutput", notes);
 
-        state.videosChecked += 1;
+      state.notesGenerated++;
+      updateStats();
 
-        addActivity(
-            "YouTube Analysis",
-            url
-        );
-
-        updateStatistics();
-
-        showToast("YouTube analysis completed!");
+      showToast("Notes generated successfully!");
     } catch (error) {
-        if (output) {
-            output.textContent = error.message;
-        }
-
-        showToast(error.message, "error");
+      setOutput("notesOutput", "Error: " + error.message);
     } finally {
-        if (button) {
-            button.disabled = false;
-            button.textContent = "Analyze Video";
-        }
+      setLoading(button, false);
     }
+  });
+}
+
+/* ---------- YOUTUBE SUMMARIZER ---------- */
+
+function getYouTubeVideoId(url) {
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+
+    if (
+      hostname === "youtu.be" ||
+      hostname.endsWith(".youtu.be")
+    ) {
+      return parsed.pathname.split("/").filter(Boolean)[0] || "";
+    }
+
+    if (
+      hostname === "youtube.com" ||
+      hostname.endsWith(".youtube.com") ||
+      hostname === "youtube-nocookie.com" ||
+      hostname.endsWith(".youtube-nocookie.com")
+    ) {
+      if (parsed.pathname === "/watch") {
+        return parsed.searchParams.get("v") || "";
+      }
+
+      const parts = parsed.pathname.split("/").filter(Boolean);
+
+      if (
+        ["embed", "shorts", "live"].includes(parts[0])
+      ) {
+        return parts[1] || "";
+      }
+    }
+  } catch (error) {
+    return "";
+  }
+
+  return "";
 }
 
 function initializeYouTube() {
-    const button = getElement(
-        "#analyzeYoutubeButton",
-        "#analyzeVideo",
-        "#youtubeButton"
-    );
+  const form = getElement("youtubeForm");
+  const button = getElement("summarizeVideo");
 
-    if (button) {
-        button.addEventListener("click", analyzeYouTube);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const url = getElement("youtubeUrl").value.trim();
+    const maxLength = getElement("youtubeLength").value;
+    const videoId = getYouTubeVideoId(url);
+
+    if (!videoId) {
+      showToast("Enter a valid YouTube video URL.");
+      return;
     }
+
+    setOutput("youtubeOutput", "Preparing video summary...");
+    setLoading(button, true, "Summarizing...");
+
+    try {
+      const data = await callAPI("/api/youtube", {
+        url: url,
+        videoId: videoId,
+        maxLength: maxLength
+      });
+
+      const summary = extractText(data, [
+        "summary",
+        "result",
+        "transcript",
+        "text",
+        "response",
+        "answer"
+      ]);
+
+      if (!summary) {
+        throw new Error(
+          "No summary returned. The backend may need access to the video's transcript."
+        );
+      }
+
+      setOutput("youtubeOutput", summary);
+      showToast("Video summary received!");
+    } catch (error) {
+      setOutput("youtubeOutput", "Error: " + error.message);
+    } finally {
+      setLoading(button, false);
+    }
+  });
 }
 
-/* ---------- FILE MANAGEMENT ---------- */
+/* ---------- QUIZ ---------- */
 
-function addFiles(fileList) {
-    if (!fileList || !fileList.length) {
-        return;
+function parseQuizResponse(data) {
+  let quizData = data;
+
+  if (typeof quizData === "string") {
+    quizData = JSON.parse(quizData);
+  }
+
+  if (quizData && typeof quizData.result === "string") {
+    try {
+      quizData = JSON.parse(quizData.result);
+    } catch (error) {
+      // Continue checking other response fields.
+    }
+  }
+
+  if (quizData && typeof quizData.text === "string") {
+    try {
+      quizData = JSON.parse(quizData.text);
+    } catch (error) {
+      // Continue checking other response fields.
+    }
+  }
+
+  if (quizData && Array.isArray(quizData.questions)) {
+    return quizData.questions;
+  }
+
+  if (Array.isArray(quizData)) {
+    return quizData;
+  }
+
+  throw new Error(
+    "Quiz response must contain a JSON array of questions."
+  );
+}
+
+function normalizeQuestion(question) {
+  const options = question.options || question.choices;
+
+  if (!Array.isArray(options) || options.length < 2) {
+    throw new Error("A quiz question has invalid answer choices.");
+  }
+
+  let answer = question.answer ?? question.correctAnswer ?? question.correct;
+
+  if (typeof answer === "string") {
+    const letter = answer.trim().toUpperCase();
+
+    if (/^[A-D]$/.test(letter)) {
+      answer = letter.charCodeAt(0) - 65;
+    } else {
+      const matchingIndex = options.findIndex((option) => {
+        const optionText =
+          typeof option === "string" ? option : option.text;
+
+        return String(optionText).trim() === answer.trim();
+      });
+
+      if (matchingIndex !== -1) {
+        answer = matchingIndex;
+      }
+    }
+  }
+
+  if (!Number.isInteger(answer) || answer < 0 || answer >= options.length) {
+    throw new Error(
+      "A quiz question is missing a valid correct answer."
+    );
+  }
+
+  return {
+    question: String(question.question || question.text || "Question"),
+    options: options.map((option) => {
+      if (typeof option === "string") return option;
+      return String(option.text || option.label || "");
+    }),
+    answer: answer,
+    explanation: String(question.explanation || "")
+  };
+}
+
+function renderQuiz() {
+  const output = getElement("quizOutput");
+  output.replaceChildren();
+
+  if (!state.quiz.length) return;
+
+  let score = 0;
+
+  state.quiz.forEach((question, questionIndex) => {
+    if (state.quizAnswers[questionIndex] === question.answer) {
+      score++;
     }
 
-    let added = 0;
+    const block = document.createElement("div");
+    block.style.marginBottom = "24px";
 
-    Array.from(fileList).forEach((file) => {
-        const extension = getExtension(file.name);
+    const heading = document.createElement("h3");
+    heading.textContent =
+      (questionIndex + 1) + ". " + question.question;
 
-        if (!ALLOWED_EXTENSIONS.includes(extension)) {
-            showToast(
-                `${file.name}: unsupported file type.`
-            );
+    block.appendChild(heading);
 
-            return;
+    question.options.forEach((option, optionIndex) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "choice";
+      button.textContent =
+        String.fromCharCode(65 + optionIndex) + ". " + option;
+
+      const selected = state.quizAnswers[questionIndex];
+
+      if (selected === optionIndex) {
+        button.classList.add("selected");
+      }
+
+      if (selected !== undefined && optionIndex === question.answer) {
+        button.classList.add("correct");
+      } else if (selected === optionIndex && selected !== question.answer) {
+        button.classList.add("wrong");
+      }
+
+      button.addEventListener("click", () => {
+        if (state.quizAnswers[questionIndex] !== undefined) {
+          return;
         }
 
-        if (file.size > MAX_FILE_SIZE) {
-            showToast(
-                `${file.name}: maximum file size is 10 MB.`
-            );
+        state.quizAnswers[questionIndex] = optionIndex;
+        renderQuiz();
+      });
 
-            return;
-        }
-
-        const duplicate = state.files.some((item) =>
-            item.name === file.name &&
-            item.size === file.size &&
-            item.lastModified === file.lastModified
-        );
-
-        if (duplicate) {
-            return;
-        }
-
-        state.files.push({
-            id: `${Date.now()}-${Math.random()}`,
-            name: file.name,
-            size: file.size,
-            lastModified: file.lastModified,
-            extension,
-            file
-        });
-
-        added += 1;
+      block.appendChild(button);
     });
 
-    renderFiles();
-    updateStatistics();
+    if (state.quizAnswers[questionIndex] !== undefined) {
+      const explanation = document.createElement("p");
+      explanation.className = "muted";
 
-    if (added > 0) {
-        addActivity(
-            "Files Uploaded",
-            `${added} file(s) added`
-        );
+      explanation.textContent =
+        "Correct answer: " +
+        String.fromCharCode(65 + question.answer) +
+        ". " +
+        question.options[question.answer] +
+        (question.explanation ? "\n" + question.explanation : "");
 
-        showToast(`${added} file(s) added.`);
-    }
-}
-
-function removeFile(fileId) {
-    state.files = state.files.filter(
-        (file) => file.id !== fileId
-    );
-
-    if (state.selectedPdfId === fileId) {
-        state.selectedPdfId = null;
+      block.appendChild(explanation);
     }
 
-    renderFiles();
-    updateStatistics();
-    updateSelectedPdf();
+    output.appendChild(block);
+  });
+
+  const answered = Object.keys(state.quizAnswers).length;
+  const scoreLabel = document.createElement("p");
+
+  scoreLabel.className = "muted";
+  scoreLabel.textContent =
+    "Answered: " + answered + "/" + state.quiz.length +
+    " · Current score: " + score;
+
+  output.prepend(scoreLabel);
 }
+
+function initializeQuiz() {
+  const form = getElement("quizForm");
+  const button = getElement("generateQuiz");
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const topic = getElement("quizTopic").value.trim();
+    const count = Number(getElement("quizCount").value);
+    const difficulty = getElement("quizDifficulty").value;
+
+    if (!topic) {
+      showToast("Enter a quiz topic.");
+      return;
+    }
+
+    setOutput("quizOutput", "Generating quiz questions...");
+    setLoading(button, true, "Generating...");
+
+    try {
+      const data = await callAPI("/api/quiz", {
+        topic: topic,
+        count: count,
+        difficulty: difficulty
+      });
+
+      state.quiz = parseQuizResponse(data).map(normalizeQuestion);
+      state.quizAnswers = {};
+
+      if (!state.quiz.length) {
+        throw new Error("No questions were generated.");
+      }
+
+      renderQuiz();
+      showToast("Quiz is ready!");
+    } catch (error) {
+      state.quiz = [];
+      state.quizAnswers = {};
+      setOutput("quizOutput", "Error: " + error.message);
+    } finally {
+      setLoading(button, false);
+    }
+  });
+}
+
+/* ---------- FILE UPLOAD ---------- */
 
 function renderFiles() {
-    const fileListElement = getElement(
-        "#fileList",
-        "#uploadedFiles"
-    );
+  const list = getElement("fileList");
+  list.replaceChildren();
 
-    if (!fileListElement) {
-        return;
-    }
+  state.files.forEach((file, index) => {
+    const row = document.createElement("div");
+    row.className = "file-item";
 
-    if (state.files.length === 0) {
-        fileListElement.innerHTML =
-            '<p class="empty-state">No files uploaded yet.</p>';
+    const info = document.createElement("span");
+    info.textContent = "📄 " + file.name + " · " + formatSize(file.size);
 
-        return;
-    }
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "btn btn-danger";
+    remove.textContent = "Remove";
+    remove.style.marginTop = "0";
 
-    fileListElement.innerHTML = state.files.map((file) => `
-        <div class="file-item ${
-            file.id === state.selectedPdfId ? "selected" : ""
-        }"
-        data-file-id="${escapeHTML(file.id)}">
+    remove.addEventListener("click", () => {
+      if (state.selectedPdf === file) {
+        state.selectedPdf = null;
+      }
 
-            <div class="file-info">
-                <strong>${escapeHTML(file.name)}</strong>
-                <small>${formatFileSize(file.size)}</small>
-            </div>
+      state.files.splice(index, 1);
 
-            ${
-                file.extension === "pdf"
-                    ? `<button type="button"
-                        data-select-pdf="${escapeHTML(file.id)}">
-                        Select PDF
-                    </button>`
-                    : ""
-            }
+      renderFiles();
+      updateStats();
+      updateSelectedPdf();
 
-            <button type="button"
-                data-remove-file="${escapeHTML(file.id)}"
-                aria-label="Remove ${escapeHTML(file.name)}">
-                Remove
-            </button>
-        </div>
-    `).join("");
+      showToast("File removed.");
+    });
+
+    row.append(info, remove);
+    list.appendChild(row);
+  });
+
+  getElement("fileCount").textContent =
+    state.files.length + " file(s) selected";
 }
 
-function initializeFileUpload() {
-    const fileInput = getElement("#fileInput");
-    const chooseButton = getElement("#chooseFiles");
-    const uploadZone = getElement("#uploadZone");
+function updateSelectedPdf() {
+  const label = getElement("selectedPdfName");
 
-    if (chooseButton && fileInput) {
-        chooseButton.addEventListener("click", () => {
-            fileInput.click();
-        });
+  if (state.selectedPdf) {
+    label.textContent = "Selected PDF: " + state.selectedPdf.name;
+  } else {
+    label.textContent = "No PDF selected yet.";
+  }
+}
+
+function initializeFiles() {
+  const input = getElement("fileInput");
+
+  input.addEventListener("change", () => {
+    const incoming = Array.from(input.files || []);
+
+    for (const file of incoming) {
+      const extension = getExtension(file.name);
+
+      if (!ALLOWED_EXTENSIONS.includes(extension)) {
+        showToast("Unsupported file: " + file.name);
+        continue;
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        showToast(file.name + " exceeds the 10 MB limit.");
+        continue;
+      }
+
+      if (state.files.some((existing) =>
+        existing.name === file.name &&
+        existing.size === file.size
+      )) {
+        continue;
+      }
+
+      state.files.push(file);
     }
 
-    if (fileInput) {
-        fileInput.addEventListener("change", () => {
-            addFiles(fileInput.files);
-            fileInput.value = "";
-        });
+    renderFiles();
+    updateStats();
+
+    if (!state.selectedPdf) {
+      state.selectedPdf =
+        state.files.find((file) =>
+          getExtension(file.name) === "pdf"
+        ) || null;
     }
 
-    if (uploadZone) {
-        uploadZone.addEventListener("dragover", (event) => {
-            event.preventDefault();
-            uploadZone.classList.add("drag-over");
-        });
+    updateSelectedPdf();
 
-        uploadZone.addEventListener("dragleave", () => {
-            uploadZone.classList.remove("drag-over");
-        });
+    // Reset so the same file can be selected again after removal.
+    input.value = "";
+  });
 
-        uploadZone.addEventListener("drop", (event) => {
-            event.preventDefault();
+  getElement("clearFiles").addEventListener("click", () => {
+    state.files = [];
+    state.selectedPdf = null;
 
-            uploadZone.classList.remove("drag-over");
+    renderFiles();
+    updateStats();
+    updateSelectedPdf();
 
-            addFiles(event.dataTransfer.files);
-        });
+    setOutput("pdfOutput", "");
+    showToast("Selected files cleared.");
+  });
 
-        uploadZone.addEventListener("click", (event) => {
-            if (
-                fileInput &&
-                !event.target.closest("button")
-            ) {
-                fileInput.click();
-            }
-        });
-    }
-
-    const fileListElement = getElement(
-        "#fileList",
-        "#uploadedFiles"
-    );
-
-    if (fileListElement) {
-        fileListElement.addEventListener("click", (event) => {
-            const removeButton = event.target.closest(
-                "[data-remove-file]"
-            );
-
-            if (removeButton) {
-                removeFile(removeButton.dataset.removeFile);
-                return;
-            }
-
-            const selectButton = event.target.closest(
-                "[data-select-pdf]"
-            );
-
-            if (selectButton) {
-                selectPdf(selectButton.dataset.selectPdf);
-            }
-        });
-    }
+  getElement("fileList").addEventListener("click", (event) => {
+    const row = event.target.closest(".file-item");
+    if (!row) return;
+  });
 }
 
 /* ---------- PDF ANALYZER ---------- */
 
-function selectPdf(fileId) {
-    const file = state.files.find(
-        (item) => item.id === fileId
-    );
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
 
-    if (!file || file.extension !== "pdf") {
-        showToast("Select a PDF file.", "error");
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const commaIndex = result.indexOf(",");
+
+      if (commaIndex === -1) {
+        reject(new Error("Could not read PDF data."));
         return;
-    }
+      }
 
-    if (file.size > MAX_PDF_SIZE) {
-        showToast(
-            "For PDF analysis, choose a PDF of 3 MB or less.",
-            "error"
-        );
-
-        return;
-    }
-
-    state.selectedPdfId = fileId;
-
-    updateSelectedPdf();
-    renderFiles();
-
-    showToast("PDF selected.");
-}
-
-function updateSelectedPdf() {
-    const nameElement = getElement("#selectedPdfName");
-    const analyzeButton = getElement("#analyzePdfButton");
-
-    const selected = state.files.find(
-        (file) => file.id === state.selectedPdfId
-    );
-
-    if (nameElement) {
-        nameElement.textContent = selected
-            ? `${selected.name} (${formatFileSize(selected.size)})`
-            : "No PDF selected";
-    }
-
-    if (analyzeButton) {
-        analyzeButton.disabled =
-            !selected || state.isPdfAnalyzing;
-    }
-}
-
-function pdfToBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-
-        reader.onload = () => {
-            const result = String(reader.result || "");
-            const commaIndex = result.indexOf(",");
-
-            if (commaIndex === -1) {
-                reject(new Error("Could not read the PDF."));
-                return;
-            }
-
-            resolve(result.slice(commaIndex + 1));
-        };
-
-        reader.onerror = () => {
-            reject(new Error("Failed to read the selected PDF."));
-        };
-
-        reader.readAsDataURL(file);
-    });
-}
-
-function showPdfMessage(message) {
-    const output = getElement("#pdfOutput");
-
-    if (output) {
-        output.textContent = message;
-    }
-}
-
-function getPdfTaskTitle(task) {
-    const titles = {
-        summary: "PDF Summary",
-        "study-notes": "PDF Study Notes",
-        questions: "Practice Questions",
-        flashcards: "Flashcards"
+      resolve(result.slice(commaIndex + 1));
     };
 
-    return titles[task] || "PDF Analysis";
-}
+    reader.onerror = () => {
+      reject(new Error("Failed to read the PDF file."));
+    };
 
-async function analyzePdf() {
-    if (state.isPdfAnalyzing) {
-        return;
-    }
-
-    const selected = state.files.find(
-        (file) => file.id === state.selectedPdfId
-    );
-
-    if (!selected) {
-        showToast("Upload and select a PDF first.");
-        return;
-    }
-
-    if (selected.extension !== "pdf") {
-        showToast("Only PDF files can be analyzed.");
-        return;
-    }
-
-    if (selected.size > MAX_PDF_SIZE) {
-        showToast("PDF must be 3 MB or smaller.");
-        return;
-    }
-
-    const taskSelect = getElement("#pdfTask");
-    const languageSelect = getElement("#pdfLanguage");
-    const analyzeButton = getElement("#analyzePdfButton");
-
-    const task = taskSelect
-        ? taskSelect.value
-        : "summary";
-
-    const language = languageSelect
-        ? languageSelect.value
-        : "Simple English";
-
-    const allowedTasks = [
-        "summary",
-        "study-notes",
-        "questions",
-        "flashcards"
-    ];
-
-    if (!allowedTasks.includes(task)) {
-        showToast("Choose a valid PDF analysis task.");
-        return;
-    }
-
-    state.isPdfAnalyzing = true;
-
-    if (analyzeButton) {
-        analyzeButton.disabled = true;
-        analyzeButton.textContent = "Analyzing PDF...";
-    }
-
-    showPdfMessage(
-        "Reading PDF and generating your study material..."
-    );
-
-    try {
-        const fileData = await pdfToBase64(selected.file);
-
-        const result = await callAPI("/api/analyze-pdf", {
-            fileName: selected.name,
-            fileData,
-            task,
-            language
-        });
-
-        const text =
-            result.result ||
-            result.text ||
-            result.response;
-
-        if (!text) {
-            throw new Error(
-                "The PDF analyzer returned no study material."
-            );
-        }
-
-        showPdfMessage(text);
-
-        addActivity(
-            getPdfTaskTitle(task),
-            selected.name
-        );
-
-        showToast("PDF analysis completed!");
-    } catch (error) {
-        showPdfMessage(
-            `Unable to analyze PDF.\n\n${error.message}`
-        );
-
-        showToast(error.message, "error");
-    } finally {
-        state.isPdfAnalyzing = false;
-
-        if (analyzeButton) {
-            analyzeButton.textContent = "Analyze PDF";
-        }
-
-        updateSelectedPdf();
-    }
+    reader.readAsDataURL(file);
+  });
 }
 
 function initializePdfAnalyzer() {
-    const button = getElement("#analyzePdfButton");
+  const form = getElement("pdfForm");
+  const button = getElement("analyzePdfButton");
 
-    if (button) {
-        button.addEventListener("click", analyzePdf);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const file = state.selectedPdf;
+
+    if (!file) {
+      showToast("Upload and select a PDF first.");
+      return;
     }
 
-    updateSelectedPdf();
-}
-
-/* ---------- QUIZ GENERATOR ---------- */
-
-async function generateQuiz() {
-    if (state.isQuizLoading) {
-        return;
+    if (getExtension(file.name) !== "pdf") {
+      showToast("Please select a PDF file.");
+      return;
     }
 
-    const topicInput = getElement(
-        "#quizTopic",
-        "#quizTopicInput"
-    );
-
-    const countInput = getElement(
-        "#quizCount",
-        "#questionCount"
-    );
-
-    const difficultyInput = getElement(
-        "#quizDifficulty",
-        "#difficultySelect"
-    );
-
-    const output = getElement(
-        "#quizOutput",
-        "#quizContainer",
-        "#quizResult"
-    );
-
-    const topic = topicInput
-        ? topicInput.value.trim()
-        : "";
-
-    if (!topic) {
-        showToast("Enter a quiz topic.");
-        return;
+    if (file.size > MAX_PDF_SIZE) {
+      showToast("PDF Analyzer supports PDFs up to 3 MB.");
+      return;
     }
 
-    const count = Math.min(
-        20,
-        Math.max(
-            1,
-            Number(countInput ? countInput.value : 5) || 5
-        )
-    );
+    const task = getElement("pdfTask").value;
+    const language = getElement("pdfLanguage").value;
 
-    const difficulty = difficultyInput
-        ? difficultyInput.value
-        : "medium";
-
-    const button = getElement(
-        "#generateQuizButton",
-        "#generateQuiz",
-        "#quizButton"
-    );
-
-    state.isQuizLoading = true;
-
-    if (button) {
-        button.disabled = true;
-        button.textContent = "Generating...";
-    }
-
-    if (output) {
-        output.textContent = "Creating your quiz...";
-    }
+    setOutput("pdfOutput", "Reading PDF and generating your study material...");
+    setLoading(button, true, "Analyzing...");
 
     try {
-        const result = await callAPI("/api/quiz", {
-            topic,
-            count,
-            difficulty
-        });
+      const fileData = await readFileAsBase64(file);
 
-        let questions =
-            result.questions ||
-            result.quiz ||
-            result.result;
+      const data = await callAPI("/api/analyze-pdf", {
+        fileName: file.name,
+        fileData: fileData,
+        task: task,
+        language: language
+      });
 
-        if (typeof questions === "string") {
-            try {
-                const cleaned = questions
-                    .replace(/^```(?:json)?\s*/i, "")
-                    .replace(/\s*```$/, "");
+      const result = extractText(data, [
+        "result",
+        "text",
+        "response",
+        "answer"
+      ]);
 
-                questions = JSON.parse(cleaned);
-            } catch {
-                throw new Error(
-                    "The quiz response was not valid JSON."
-                );
-            }
-        }
+      if (!result) {
+        throw new Error("The server did not return a PDF analysis.");
+      }
 
-        if (questions && !Array.isArray(questions)) {
-            questions = questions.questions;
-        }
+      setOutput(
+        "pdfOutput",
+        result + (data.textTruncated
+          ? "\n\nNote: Only part of the PDF text was analyzed."
+          : "")
+      );
 
-        if (!Array.isArray(questions) || questions.length === 0) {
-            throw new Error(
-                "No quiz questions were generated."
-            );
-        }
-
-        state.quiz = questions;
-        state.quizIndex = 0;
-        state.quizAnswers = [];
-
-        renderQuiz();
-
-        addActivity("Quiz Generated", topic);
-
-        showToast("Quiz generated!");
+      showToast("PDF analysis complete!");
     } catch (error) {
-        if (output) {
-            output.textContent = error.message;
-        }
-
-        showToast(error.message, "error");
+      setOutput("pdfOutput", "Error: " + error.message);
     } finally {
-        state.isQuizLoading = false;
-
-        if (button) {
-            button.disabled = false;
-            button.textContent = "Generate Quiz";
-        }
+      setLoading(button, false);
     }
+  });
 }
 
-function renderQuiz() {
-    const output = getElement(
-        "#quizOutput",
-        "#quizContainer",
-        "#quizResult"
-    );
-
-    if (!output || !state.quiz) {
-        return;
-    }
-
-    if (state.quizIndex >= state.quiz.length) {
-        renderQuizResults(output);
-        return;
-    }
-
-    const question = state.quiz[state.quizIndex];
-
-    const questionText =
-        question.question ||
-        question.text ||
-        question.prompt ||
-        "Question";
-
-    const options =
-        question.options ||
-        question.choices ||
-        [];
-
-    output.innerHTML = `
-        <div class="quiz-question">
-            <p>Question ${state.quizIndex + 1}
-                of ${state.quiz.length}</p>
-
-            <h3>${escapeHTML(questionText)}</h3>
-
-            <div class="quiz-options">
-                ${
-                    options.length
-                        ? options.map((option, index) => `
-                            <button type="button"
-                                class="quiz-option"
-                                data-quiz-answer="${index}">
-                                ${escapeHTML(option)}
-                            </button>
-                        `).join("")
-                        : `
-                            <input
-                                id="quizTextAnswer"
-                                type="text"
-                                placeholder="Type your answer"
-                            >
-                        `
-                }
-            </div>
-
-            <button type="button" id="nextQuizButton">
-                ${state.quizIndex === state.quiz.length - 1
-                    ? "Finish Quiz"
-                    : "Next Question"}
-            </button>
-        </div>
-    `;
-
-    output.querySelectorAll("[data-quiz-answer]").forEach(
-        (button) => {
-            button.addEventListener("click", () => {
-                output.querySelectorAll(
-                    "[data-quiz-answer]"
-                ).forEach((item) => {
-                    item.classList.remove("selected");
-                });
-
-                button.classList.add("selected");
-
-                state.quizAnswers[state.quizIndex] =
-                    Number(button.dataset.quizAnswer);
-            });
-        }
-    );
-
-    const nextButton = $("#nextQuizButton");
-
-    if (nextButton) {
-        nextButton.addEventListener("click", () => {
-            const textAnswer = $("#quizTextAnswer");
-
-            if (textAnswer) {
-                state.quizAnswers[state.quizIndex] =
-                    textAnswer.value.trim();
-            }
-
-            state.quizIndex += 1;
-            renderQuiz();
-        });
-    }
-}
-
-function renderQuizResults(output) {
-    let score = 0;
-
-    state.quiz.forEach((question, index) => {
-        const correct =
-            question.answerIndex ??
-            question.correctIndex ??
-            question.correctAnswer;
-
-        const userAnswer = state.quizAnswers[index];
-
-        if (typeof correct === "number") {
-            if (userAnswer === correct) {
-                score += 1;
-            }
-        } else if (typeof correct === "string") {
-            const options =
-                question.options ||
-                question.choices ||
-                [];
-
-            const correctOption = options[correct];
-
-            if (
-                String(userAnswer).trim().toLowerCase() ===
-                    String(correct).trim().toLowerCase() ||
-                (
-                    correctOption !== undefined &&
-                    String(userAnswer).trim().toLowerCase() ===
-                    String(correctOption).trim().toLowerCase()
-                )
-            ) {
-                score += 1;
-            }
-        }
-    });
-
-    output.innerHTML = `
-        <div class="quiz-results">
-            <h2>Quiz Completed!</h2>
-            <p>Your score:</p>
-            <h3>${score} / ${state.quiz.length}</h3>
-            <p>${Math.round(
-                score / state.quiz.length * 100
-            )}%</p>
-
-            <button type="button" id="restartQuizButton">
-                Try Again
-            </button>
-        </div>
-    `;
-
-    const restartButton = $("#restartQuizButton");
-
-    if (restartButton) {
-        restartButton.addEventListener("click", () => {
-            state.quizIndex = 0;
-            state.quizAnswers = [];
-            renderQuiz();
-        });
-    }
-
-    addActivity(
-        "Quiz Completed",
-        `Score: ${score}/${state.quiz.length}`
-    );
-}
-
-function initializeQuiz() {
-    const button = getElement(
-        "#generateQuizButton",
-        "#generateQuiz",
-        "#quizButton"
-    );
-
-    if (button) {
-        button.addEventListener("click", generateQuiz);
-    }
-}
-
-/* ---------- COPY OUTPUT ---------- */
-
-async function copyText(text) {
-    try {
-        if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(text);
-        } else {
-            const textarea = document.createElement("textarea");
-
-            textarea.value = text;
-
-            Object.assign(textarea.style, {
-                position: "absolute",
-                left: "-9999px"
-            });
-
-            document.body.appendChild(textarea);
-
-            textarea.select();
-
-            const successful = document.execCommand("copy");
-
-            textarea.remove();
-
-            if (!successful) {
-                throw new Error("Copy failed.");
-            }
-        }
-
-        showToast("Copied to clipboard!");
-    } catch {
-        showToast(
-            "Copy unavailable. Select the text and copy it manually."
-        );
-    }
-}
+/* ---------- COPY BUTTONS ---------- */
 
 function initializeCopyButtons() {
-    document.addEventListener("click", (event) => {
-        const button = event.target.closest(
-            "[data-copy-target]"
-        );
+  document.querySelectorAll("[data-copy]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const target = getElement(button.dataset.copy);
 
-        if (!button) {
-            return;
-        }
-
-        const target = $(
-            `#${CSS.escape(button.dataset.copyTarget)}`
-        );
-
-        if (!target) {
-            return;
-        }
-
-        const text =
-            target.value !== undefined
-                ? target.value
-                : target.innerText;
-
-        copyText(text);
-    });
-}
-
-/* ---------- CLEAR CHAT ---------- */
-
-function initializeClearChat() {
-    const button = getElement(
-        "#clearChat",
-        "#clearChatButton"
-    );
-
-    if (!button) {
+      if (!target || !target.textContent.trim()) {
+        showToast("There is no content to copy yet.");
         return;
-    }
+      }
 
-    button.addEventListener("click", () => {
-        const { messages } = getChatElements();
+      try {
+        await navigator.clipboard.writeText(target.textContent);
+        showToast("Copied to clipboard!");
+      } catch (error) {
+        // Fallback for browsers that do not support Clipboard API.
+        const temporary = document.createElement("textarea");
+        temporary.value = target.textContent;
+        temporary.style.position = "absolute";
+        temporary.style.left = "-9999px";
 
-        if (!messages) {
-            return;
-        }
+        document.body.appendChild(temporary);
+        temporary.select();
 
-        messages.replaceChildren();
+        const copied = document.execCommand("copy");
+        temporary.remove();
 
-        state.messagesSent = 0;
-
-        updateStatistics();
-
-        showToast("Chat cleared.");
+        showToast(
+          copied ? "Copied to clipboard!" : "Copy failed. Please select the text."
+        );
+      }
     });
+  });
 }
 
 /* ---------- INITIALIZATION ---------- */
 
-function initializeApp() {
+function initializeStudyAI() {
+  try {
     initializeNavigation();
     initializeChat();
     initializeNotes();
     initializeYouTube();
-    initializeFileUpload();
-    initializePdfAnalyzer();
     initializeQuiz();
+    initializeFiles();
+    initializePdfAnalyzer();
     initializeCopyButtons();
-    initializeClearChat();
 
     renderFiles();
-    renderActivity();
-    updateStatistics();
-
-    navigateTo("chat");
+    updateSelectedPdf();
+    updateStats();
+    navigateTo("home");
 
     console.log("StudyAI initialized successfully.");
+  } catch (error) {
+    console.error("StudyAI initialization failed:", error);
+    showToast("StudyAI could not initialize. Check app.js for errors.");
+  }
 }
 
 if (document.readyState === "loading") {
-    document.addEventListener(
-        "DOMContentLoaded",
-        initializeApp,
-        { once: true }
-    );
+  document.addEventListener("DOMContentLoaded", initializeStudyAI, {
+    once: true
+  });
 } else {
-    initializeApp();
-}
+  initializeStudyAI();
+                         }
