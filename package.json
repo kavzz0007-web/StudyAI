@@ -2,7 +2,17 @@
   "name": "studyai",
   "version": "1.0.0",
   "private": true,
+  "description": "StudyAI - AI-powered study assistant for students",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev"
+  },
   "dependencies": {
-    "@google/genai": "^1.0.0"
+    "@google/genai": "^1.0.0",
+    "pdf-parse": "^1.1.1"
+  },
+  "devDependencies": {
+    "vercel": "^41.0.0"
   }
 }
